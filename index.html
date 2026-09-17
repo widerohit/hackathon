@@ -1,1 +1,783 @@
-test
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MergeFlow — Figma-style prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --navy: #1a1a1a;
+      --teal: #0f6b63;
+      --bg: #fff;
+      --line: #d0d5dd;
+      --text: #1a1a1a;
+      --muted: #5f6b7a;
+      --head: #f3f4f6;
+      --amber: #9a6700;
+      --red: #b42318;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--text);
+      background: #2b2b2b;
+      overflow: hidden;
+    }
+    button, input, select, textarea { font-family: inherit; }
+    .chrome {
+      height: 40px; background: #1f1f1f; display: flex; align-items: center;
+      justify-content: space-between; padding: 0 12px; color: #fff; border-bottom: 1px solid #000;
+    }
+    .chrome-left, .chrome-right, .chrome-center { display: flex; align-items: center; gap: 8px; }
+    .figma-dots { display: flex; gap: 5px; }
+    .figma-dots span { width: 8px; height: 8px; background: #666; }
+    .figma-dots span:nth-child(1) { background: #ff5f57; }
+    .figma-dots span:nth-child(2) { background: #febc2e; }
+    .figma-dots span:nth-child(3) { background: #28c840; }
+    .file-name { font-size: 12px; font-weight: 600; color: #e5e7eb; }
+    .file-name small { color: #9ca3af; font-weight: 400; margin-left: 8px; }
+    .mode-toggle { background: #111; border: 1px solid #444; display: flex; }
+    .mode-toggle button {
+      border: 0; background: transparent; color: #d1d5db; font-size: 11px; font-weight: 600;
+      padding: 5px 10px; cursor: pointer;
+    }
+    .mode-toggle button.on { background: #fff; color: #111; }
+    .present-btn {
+      background: var(--navy); color: #fff; border: 1px solid #000;
+      padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .zoom { color: #9ca3af; font-size: 11px; }
+    .canvas-wrap { height: calc(100% - 40px); overflow: auto; background:
+      linear-gradient(#3a3a3a 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, #3a3a3a 1px, transparent 1px) 0 0 / 24px 24px #2b2b2b; }
+    .canvas { min-width: 3200px; padding: 48px 56px 72px; display: flex; gap: 40px; align-items: flex-start; }
+    .artboard { cursor: pointer; }
+    .artboard-label { display: flex; align-items: center; gap: 8px; color: #d1d5db; font-size: 11px; font-weight: 600; margin-bottom: 8px; }
+    .artboard-label em { font-style: normal; color: #8b8b8b; font-weight: 400; }
+    .device {
+      width: 1280px; height: 800px; background: #f6f7fb; overflow: hidden;
+      display: grid; grid-template-columns: 220px 1fr; border: 1px solid #111; border-radius: 12px;
+    }
+    .canvas .device { pointer-events: none; transform: scale(.72); transform-origin: top left; }
+    .artboard .scaler { width: calc(1280px * .72); height: calc(800px * .72); }
+    body.prototype-mode .canvas-wrap { overflow: hidden; }
+    body.prototype-mode .canvas { min-width: 0; padding: 0; height: 100%; }
+    body.prototype-mode .artboard { display: none; }
+    body.prototype-mode .artboard.active { display: block; width: 100%; height: 100%; }
+    body.prototype-mode .artboard-label { display: none; }
+    body.prototype-mode .scaler, body.prototype-mode .device {
+      width: 100%; height: 100%; transform: none; border: 0;
+    }
+    .sidebar { background: #0f172a; color: #fff; display: flex; flex-direction: column; }
+    .brand { display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: center; padding: 18px 16px 16px; }
+    .logo { width: 32px; height: 32px; border-radius: 10px; background: #14b8a6; color: #042f2e; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+    .brand h1 { font-size: 15px; font-weight: 700; }
+    .brand p { font-size: 11px; color: #94a3b8; }
+    .nav-item { display: grid; grid-template-columns: 16px 1fr; gap: 10px; align-items: center; margin: 2px 10px; padding: 9px 10px; border-radius: 10px; font-size: 13px; font-weight: 500; color: #cbd5e1; cursor: pointer; }
+    .nav-item:hover { background: rgba(255,255,255,.06); }
+    .nav-item.active { background: #14b8a6; color: #042f2e; }
+    .nav-item svg { width: 16px; height: 16px; }
+    .sidebar-foot { margin-top: auto; padding: 14px 16px; font-size: 11px; color: #94a3b8; line-height: 1.45; }
+    .main { display: grid; grid-template-rows: 56px 1fr; min-width: 0; }
+    .topbar { background: #fff; border-bottom: 1px solid #e8ecf2; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; gap: 12px; }
+    .search { max-width: 340px; flex: 1; background: #f6f7fb; border: 1px solid #e8ecf2; border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--muted); }
+    .top-right { display: flex; align-items: center; gap: 10px; }
+    .pill { font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 999px; background: #ecfdf5; color: #047857; }
+    .avatar { width: 28px; height: 28px; border-radius: 50%; background: #0f172a; color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+    .content { padding: 20px 22px 28px; overflow: auto; display: grid; align-content: start; gap: 16px; height: calc(800px - 56px); }
+    body.prototype-mode .content { height: calc(100vh - 40px - 56px); }
+    .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .page-head h2 { font-size: 22px; font-weight: 700; letter-spacing: -.03em; }
+    .page-head p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .btn { border: 1px solid #e8ecf2; background: #fff; border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .btn-ghost { background: #fff; }
+    .btn-danger { background: #fff; color: #b42318; border-color: #fecaca; }
+    .row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .release-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .release-tab {
+      border: 1px solid #e8ecf2; background: #fff; border-radius: 999px; padding: 8px 14px;
+      font-size: 13px; font-weight: 600; cursor: pointer; color: #475569;
+    }
+    .release-tab.on { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .area-block { background: #fff; border: 1px solid #e8ecf2; border-radius: 16px; padding: 16px; }
+    .area-block.empty { background: #fafbfe; }
+    .area-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .area-head h3 { font-size: 16px; font-weight: 700; }
+    .area-head span { font-size: 12px; color: var(--muted); }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .cards > .empty { grid-column: 1 / -1; }
+    .stages { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+    .stage {
+      border: 1px solid #e8ecf2; background: #f8fafc; border-radius: 14px; padding: 12px;
+      text-align: left; cursor: pointer; min-height: 86px; display: grid; align-content: space-between;
+    }
+    .stage:hover { border-color: #cbd5e1; background: #fff; }
+    .stage.on { background: #fff; border-color: #0f172a; box-shadow: 0 0 0 3px rgba(15,23,42,.08); }
+    .stage .k { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+    .stage .n { font-size: 28px; font-weight: 700; letter-spacing: -.04em; line-height: 1; }
+    .stage .s { font-size: 11px; color: #94a3b8; line-height: 1.25; }
+    .stage.open .n { color: #475569; }
+    .stage.l1 .n, .stage.l1 .k { color: #2563eb; }
+    .stage.l2 .n, .stage.l2 .k { color: #4f46e5; }
+    .stage.l3 .n, .stage.l3 .k { color: #0f172a; }
+    .stage.approved .n, .stage.approved .k { color: #0f766e; }
+    .stage.merged .n, .stage.merged .k { color: #15803d; }
+    .mr-card {
+      background: #fff; border: 1px solid #e8ecf2; border-radius: 14px; padding: 14px;
+      cursor: pointer; display: grid; gap: 8px; min-height: 128px; align-content: start;
+    }
+    .mr-card:hover { border-color: #0f172a; }
+    .mr-card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .mr-card h4 { font-size: 13px; font-weight: 650; line-height: 1.35; }
+    .mr-card-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #64748b; }
+    .kpis, .contrib-kpis, .meta, .split, .grid-2, .form-grid { display: grid; gap: 12px; }
+    .kpis { grid-template-columns: repeat(4, 1fr); }
+    .contrib-kpis { grid-template-columns: 1fr 1fr; }
+    .split, .grid-2 { grid-template-columns: 1.2fr .8fr; }
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .kpi, .meta div, .card, .box, .share {
+      background: #fff; border: 1px solid #e8ecf2; border-radius: 14px;
+    }
+    .kpi { padding: 14px; }
+    .kpi .label { font-size: 11px; color: var(--muted); font-weight: 650; }
+    .kpi .num { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .kpi .hint, .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .card { overflow: hidden; }
+    .card h3 { font-size: 13px; font-weight: 700; padding: 12px 14px; border-bottom: 1px solid #eef2f6; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter { background: #fff; border: 1px solid #e8ecf2; border-radius: 999px; padding: 6px 10px; font-size: 12px; }
+    .status, .lvl, .area { display: inline-flex; padding: 2px 8px; font-size: 11px; font-weight: 650; border-radius: 999px; white-space: nowrap; }
+    .mono { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: #0f766e; }
+    .st-open { background: #f1f5f9; color: #475569; }
+    .st-pending { background: #fff7ed; color: #c2410c; }
+    .st-approved { background: #ccfbf1; color: #0f766e; }
+    .st-merged { background: #dcfce7; color: #15803d; }
+    .l1 { background: #dbeafe; color: #1d4ed8; }
+    .l2 { background: #e0e7ff; color: #4338ca; }
+    .l3 { background: #e2e8f0; color: #0f172a; }
+    .a-ls { background: #ccfbf1; color: #0f766e; }
+    .meta { grid-template-columns: repeat(4, 1fr); }
+    .meta div { padding: 12px; }
+    .meta small { color: var(--muted); font-size: 11px; }
+    .meta b { display: block; margin-top: 4px; font-size: 13px; }
+    .field label { display: block; font-size: 11px; font-weight: 650; color: var(--muted); margin-bottom: 6px; }
+    .box { padding: 12px; font-size: 13px; line-height: 1.5; }
+    .timeline { padding: 4px 0; }
+    .step { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+    .dot { display: none; }
+    .step p { font-weight: 650; }
+    .step span { font-size: 12px; color: var(--muted); }
+    .notes { padding: 8px 14px 14px; }
+    .notes h4 { font-size: 12px; margin: 10px 0 6px; }
+    .notes li { font-size: 13px; margin: 6px 0 6px 16px; line-height: 1.4; }
+    .share { padding: 16px; font-size: 13px; line-height: 1.55; background: #0f172a; color: #fff; }
+    .share h4 { font-size: 13px; margin-bottom: 8px; }
+    .toast { position: fixed; bottom: 18px; right: 18px; background: #0f172a; color: #fff; padding: 10px 12px; border-radius: 10px; font-size: 13px; display: none; z-index: 50; }
+    .modal-back { display: none; position: absolute; inset: 0; background: rgba(15,23,42,.4); align-items: center; justify-content: center; z-index: 20; }
+    .modal-back.on { display: flex; }
+    .modal { width: 720px; max-height: 86%; overflow: auto; background: #fff; border-radius: 16px; padding: 18px; }
+    .modal h3 { font-size: 18px; margin-bottom: 4px; }
+    .form-grid { margin-top: 12px; }
+    input, select, textarea { width: 100%; border: 1px solid #e8ecf2; border-radius: 10px; padding: 8px 10px; font-size: 13px; background: #fff; }
+    textarea { min-height: 68px; resize: vertical; }
+    .crumbs { font-size: 12px; color: var(--muted); }
+    .crumbs b { color: var(--text); }
+    .title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .empty { padding: 18px 4px; font-size: 13px; color: var(--muted); }
+    .rmap {
+      display: grid; grid-template-columns: 1.15fr .95fr .75fr; gap: 0;
+      background: #fff; border: 1px solid #e8ecf2; border-radius: 12px; overflow: hidden;
+    }
+    .rmap-col + .rmap-col { border-left: 1px solid #e8ecf2; }
+    .rmap-col h3 {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+      padding: 10px 12px; background: #f8fafc; border-bottom: 1px solid #e8ecf2; color: #64748b;
+    }
+    .rmap-col h3 b { color: #0f172a; font-size: 12px; letter-spacing: 0; text-transform: none; }
+    .rmap-row {
+      display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px;
+      padding: 7px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px;
+    }
+    .rmap-row:last-child { border-bottom: 0; }
+    .rmap-av {
+      width: 26px; height: 26px; border-radius: 50%; background: #eef2ff; color: #3730a3;
+      font-size: 10px; font-weight: 700; display: grid; place-items: center;
+    }
+    .rmap-col.l1 .rmap-av { background: #eff6ff; color: #1d4ed8; }
+    .rmap-col.l2 .rmap-av { background: #eef2ff; color: #4338ca; }
+    .rmap-col.l3 .rmap-av { background: #f1f5f9; color: #0f172a; }
+    .rmap-row span { color: #94a3b8; font-size: 11px; }
+    .quiet { color: #94a3b8; font-size: 13px; padding: 8px 0 0; }
+    .board { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: start; }
+    .col { background: #fff; border: 1px solid #e8ecf2; border-radius: 12px; padding: 8px; min-height: 280px; }
+    .col-h { display: flex; justify-content: space-between; align-items: center; padding: 6px 6px 8px; }
+    .col-h b { font-size: 12px; font-weight: 700; }
+    .col-h span { font-size: 11px; color: #94a3b8; font-weight: 650; }
+    .col.open b { color: #475569; }
+    .col.l1 b { color: #2563eb; }
+    .col.l2 b { color: #4f46e5; }
+    .col.l3 b { color: #0f172a; }
+    .col.approved b { color: #0f766e; }
+    .col.merged b { color: #15803d; }
+    .slim-card {
+      background: #f8fafc; border: 1px solid #eef2f6; border-radius: 10px;
+      padding: 8px 9px; margin-bottom: 6px; cursor: pointer; display: grid; gap: 4px;
+    }
+    .slim-card:hover { background: #fff; border-color: #cbd5e1; }
+    .slim-card h4 { font-size: 12px; font-weight: 650; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .slim-card .who { font-size: 11px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <header class="chrome">
+    <div class="chrome-left">
+      <div class="figma-dots"><span></span><span></span><span></span></div>
+      <div class="file-name">MergeFlow <small>Argon hackathon · Loan Servicing data</small></div>
+    </div>
+    <div class="chrome-center">
+      <div class="mode-toggle">
+        <button id="btnCanvas" class="on" type="button">Canvas</button>
+        <button id="btnProto" type="button">Prototype</button>
+      </div>
+    </div>
+    <div class="chrome-right">
+      <span class="zoom" id="zoomLabel">72%</span>
+      <button class="present-btn" id="btnPresent" type="button">Present</button>
+    </div>
+  </header>
+
+  <div class="canvas-wrap">
+    <div class="canvas">
+      <div class="artboard active" data-frame="dashboard">
+        <div class="artboard-label">01 Dashboard <em>Manager · release → area → L1/L2</em></div>
+        <div class="scaler"><div class="device" data-app></div></div>
+      </div>
+      <div class="artboard" data-frame="mrs">
+        <div class="artboard-label">02 Merge Requests <em>Tracker</em></div>
+        <div class="scaler"><div class="device" data-app></div></div>
+      </div>
+      <div class="artboard" data-frame="detail">
+        <div class="artboard-label">03 MR detail <em>!7643 Himanshu Sharma</em></div>
+        <div class="scaler"><div class="device" data-app></div></div>
+      </div>
+      <div class="artboard" data-frame="releases">
+        <div class="artboard-label">04 Release <em>release/2026.10</em></div>
+        <div class="scaler"><div class="device" data-app></div></div>
+      </div>
+      <div class="artboard" data-frame="contribution">
+        <div class="artboard-label">05 My contribution <em>Rohit Patil</em></div>
+        <div class="scaler"><div class="device" data-app></div></div>
+      </div>
+      <div class="artboard" data-frame="reviewers">
+        <div class="artboard-label">06 Reviewer map <em>Loan Servicing</em></div>
+        <div class="scaler"><div class="device" data-app></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const ME = "Rohit Patil";
+    const OCT = "release/2026.10";
+    const REVIEWERS = {
+      L1: ["Rohit Patil", "Sunil Burud", "Kundan Bhadoriya", "Ankita Gade", "Uddeshya Kumar", "Ritika Saini"],
+      L2: ["Himanshu Sharma", "Zainab"],
+      L3: ["Mritunjay Sinha"]
+    };
+    const LEVEL = Object.fromEntries(
+      Object.entries(REVIEWERS).flatMap(([lvl, names]) => names.map((n) => [n, lvl]))
+    );
+    const ST_LABEL = { open: "Open", pending: "Pending review", approved: "Approved", merged: "Merged" };
+    const ST_CLASS = { open: "st-open", pending: "st-pending", approved: "st-approved", merged: "st-merged" };
+
+    const RAW = [
+      { id: 6630, title: "PIK Balloon Payment - Lender Breakdown Bug", author: "Uddeshya Kumar", created: "May 26, 2026, 3:01 PM", updated: "Sep 16, 2026, 6:31 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Zainab", resolved: true, change: "Fixes lender breakdown on PIK balloon payment.", impact: "Correct PIK balloon lender split in Loan Servicing." },
+      { id: 7737, title: "LS-3025 Waterfall rounding issue", author: "Kundan Bhadoriya", created: "Sep 2, 2026, 11:40 AM", updated: "Sep 16, 2026, 4:27 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Kundan Bhadoriya", change: "October release fix for waterfall rounding (LS-3025).", impact: "Waterfall amounts round correctly." },
+      { id: 7399, title: "Fx Rate Mandatory Check IPD Dashboard", author: "Sunil Burud", created: "Aug 5, 2026, 3:40 PM", updated: "Sep 15, 2026, 11:37 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Zainab", approvals: "1 of 2", change: "Makes FX rate mandatory on the IPD dashboard.", impact: "IPD cannot proceed without an FX rate." },
+      { id: 7751, title: "LS-3505 Performance Optimizations: Fix N+1 Queries & Reduce DB Round-trips", author: "Rohit Patil", created: "Sep 3, 2026, 11:44 AM", updated: "Sep 15, 2026, 7:24 PM", release: "release/2026.07", area: "Loan Servicing", assignee: "Rohit Patil", reviewRequested: "Himanshu Sharma", resolved: true, change: "Fixes N+1 queries and reduces DB round-trips (LS-3505).", impact: "Lower DB load and faster Loan Servicing screens." },
+      { id: 7801, title: "Loan Servicing : Adhoc Issues", author: "Rohit Patil", created: "Sep 9, 2026, 12:43 PM", updated: "Sep 15, 2026, 7:23 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Rohit Patil", change: "Adhoc Loan Servicing fixes for October.", impact: "Unblocks remaining October servicing issues." },
+      { id: 7643, title: "LS-3373 JUnit Test Cases Enhancements", author: "Rohit Patil", created: "Aug 24, 2026, 11:45 AM", updated: "Sep 15, 2026, 7:14 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Rohit Patil", reviewRequested: "Himanshu Sharma", change: "Strengthens JUnit coverage for Loan Servicing (LS-3373).", impact: "Safer regression coverage before October merge." },
+      { id: 7413, title: "LS-2115 Interpolation UI Validation", author: "Rohit Patil", created: "Aug 6, 2026, 5:19 PM", updated: "Sep 15, 2026, 7:12 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Rohit Patil", change: "Adds interpolation UI validation (LS-2115).", impact: "Invalid interpolation inputs are blocked in the UI." },
+      { id: 7363, title: "Account owner change in bank account", author: "Ankita Gade", created: "Jul 31, 2026, 5:32 PM", updated: "Sep 15, 2026, 6:39 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Ankita Gade", change: "Supports account owner change on bank account.", impact: "Bank account owner can be updated without a workaround." },
+      { id: 7848, title: "UI Enhancement: LS-326", author: "Yash Singhal", created: "Sep 14, 2026, 4:06 PM", updated: "Sep 15, 2026, 4:46 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Zainab", reviewRequested: "Icy Kalura", approved: true, change: "UI enhancement for LS-326.", impact: "Clearer Loan Servicing UI for October." },
+      { id: 7708, title: "Loan Decision Auto Populate Dates", author: "Sunil Burud", created: "Aug 27, 2026, 3:39 PM", updated: "Sep 15, 2026, 1:26 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Sunil Burud", change: "Auto-populates dates on loan decision.", impact: "Fewer manual date errors on loan decision." },
+      { id: 7414, title: "LS-2838 Prepayment Event : Drawdown Splits Handling", author: "Rohit Patil", created: "Aug 6, 2026, 6:15 PM", updated: "Sep 15, 2026, 10:56 AM", release: "release/2026.10", area: "Loan Servicing", assignee: "Rohit Patil", change: "Handles drawdown splits on prepayment events (LS-2838).", impact: "Prepayment with drawdown splits posts correctly." },
+      { id: 7555, title: "Remove Duplicate Buttons from Waterfall Templates [LS-3150]", author: "Yash Singhal", created: "Aug 17, 2026, 6:04 PM", updated: "Sep 14, 2026, 3:53 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Zainab", reviewRequested: "Icy Kalura", approved: true, change: "Removes duplicate buttons from waterfall templates (LS-3150).", impact: "Waterfall template UI no longer shows duplicate actions." },
+      { id: 7003, title: "October Release - UI Changes in Bank Account and Company CRM", author: "Yash Singhal", created: "Jul 2, 2026, 12:43 PM", updated: "Sep 14, 2026, 3:41 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Zainab", reviewRequested: "Icy Kalura", approved: true, resolved: true, change: "UI changes in Bank Account and Company CRM for October.", impact: "Bank account and company CRM screens match October UX." },
+      { id: 7754, title: "Fixes for high DB load and N+1 problem", author: "Uddeshya Kumar", created: "Sep 3, 2026, 12:21 PM", updated: "Sep 9, 2026, 1:19 PM", release: "release/2026.09", area: "Loan Servicing", approvals: "0 of 3", change: "Addresses high DB load and N+1 queries.", impact: "Reduces database load on Loan Servicing." },
+      { id: 7802, title: "LS-3473 Commitment fee rounding issue", author: "Ritika Saini", created: "Sep 9, 2026, 12:46 PM", updated: "Sep 9, 2026, 12:46 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Zainab", change: "Fixes commitment fee rounding (LS-3473).", impact: "Commitment fees round consistently." },
+      { id: 7727, title: "LS-2896 Scheduled event cancellation and drafts", author: "Ritika Saini", created: "Sep 1, 2026, 1:04 PM", updated: "Sep 1, 2026, 6:52 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Zainab", change: "Scheduled event cancellation and drafts (LS-2896).", impact: "Draft and cancelled scheduled events behave correctly." },
+      { id: 7713, title: "Sub account issues fix", author: "Ankita Gade", created: "Aug 31, 2026, 11:56 AM", updated: "Sep 1, 2026, 3:40 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Ankita Gade", change: "Fixes sub account issues.", impact: "Sub account flows no longer break servicing." },
+      { id: 6978, title: "Sub Account adding restriction", author: "Ankita Gade", created: "Jun 30, 2026, 3:47 PM", updated: "Aug 31, 2026, 3:41 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Ankita Gade", change: "Adds restriction when creating a sub account.", impact: "Invalid sub accounts cannot be added." },
+      { id: 7707, title: "Addition of Shortfall Fee to Waterfall", author: "Sunil Burud", created: "Aug 27, 2026, 3:33 PM", updated: "Aug 27, 2026, 3:33 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Sunil Burud", change: "Adds shortfall fee to waterfall.", impact: "Shortfall fee is included in waterfall allocation." },
+      { id: 7083, title: "Calculation start date validation for commitment fee and shortfall fee", author: "Ankita Gade", created: "Jul 10, 2026, 3:50 PM", updated: "Aug 17, 2026, 3:58 PM", release: "release/2026.10", area: "Loan Servicing", assignee: "Ankita Gade", change: "Validates calculation start date for commitment fee and shortfall fee.", impact: "Fee calculations cannot start on an invalid date." }
+    ];
+
+    function enrich(m) {
+      const candidates = [m.assignee, m.reviewRequested].filter((n) => n && n !== m.author);
+      const reviewer = candidates.find((n) => LEVEL[n]) || candidates[0] || "";
+      let status = "open";
+      if (m.resolved) status = "merged";
+      else if (m.approved) status = "approved";
+      else if (m.reviewRequested || (m.assignee && m.assignee !== m.author) || m.approvals) status = "pending";
+      return { ...m, reviewer, status, level: LEVEL[reviewer] || "" };
+    }
+    const MRS = RAW.map(enrich);
+    let selectedId = 7643;
+    let selectedRelease = OCT;
+    let selectedBucket = "l2";
+
+    const icon = {
+      dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+      mr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M8.5 7.5c4 0 5 4.5 7 4.5M8.5 16.5c4 0 5-4.5 7-4.5"/></svg>',
+      rel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h7"/><path d="M17 14l3 3-3 3"/></svg>',
+      me: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M5 19c1.5-3.5 4-5 7-5s5.5 1.5 7 5"/></svg>',
+      map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.4"/><circle cx="4" cy="12" r="1.4"/><circle cx="4" cy="18" r="1.4"/></svg>',
+      set: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M4 12h3M17 12h3M12 4v3M12 17v3"/></svg>'
+    };
+
+    function byRelease(rel) { return MRS.filter((m) => m.release === rel); }
+    function count(list, status) { return list.filter((m) => m.status === status).length; }
+    function st(m) { return `<span class="status ${ST_CLASS[m.status]}">${ST_LABEL[m.status]}</span>`; }
+    function lvl(m) { return m.level ? `<span class="lvl ${m.level.toLowerCase()}">${m.level}</span>` : "—"; }
+    function shortDate(s) { return s.replace(", 2026", "").replace(":00 ", " "); }
+    function find(id) { return MRS.find((m) => m.id === id); }
+    function contributors(list) {
+      const map = {};
+      list.forEach((m) => { map[m.author] = (map[m.author] || 0) + 1; });
+      return Object.entries(map).sort((a, b) => b[1] - a[1]);
+    }
+
+    function bucketOf(m) {
+      if (m.status === "merged") return "merged";
+      if (m.status === "approved") return "approved";
+      if (m.status === "pending" && m.level === "L1") return "l1";
+      if (m.status === "pending" && m.level === "L3") return "l3";
+      if (m.status === "pending") return "l2";
+      return "open";
+    }
+    function inBucket(list, key) { return list.filter((m) => bucketOf(m) === key); }
+    function mrCard(m) {
+      return `<article class="mr-card" data-go="detail" data-mr="${m.id}">
+        <div class="mr-card-top"><span class="mono">!${m.id}</span>${st(m)}</div>
+        <h4>${m.title}</h4>
+        <div class="mr-card-meta"><span>${m.author}</span><span>${m.reviewer ? m.reviewer + (m.level ? " · " + m.level : "") : "No reviewer yet"}</span></div>
+      </article>`;
+    }
+    function stageTile(key, label, n, sub) {
+      return `<button class="stage ${key} ${selectedBucket===key?"on":""}" type="button" data-bucket="${key}">
+        <span class="k">${label}</span><span class="n">${n}</span><span class="s">${sub}</span>
+      </button>`;
+    }
+
+    function initials(name) {
+      return name.split(" ").filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+    }
+    function personRow(name, tag) {
+      return `<div class="rmap-row"><div class="rmap-av">${initials(name)}</div><div>${name}</div><span>${tag}</span></div>`;
+    }
+    function mrSlim(m) {
+      return `<article class="slim-card" data-go="detail" data-mr="${m.id}">
+        <div class="mr-card-top"><span class="mono">!${m.id}</span>${m.level ? `<span class="lvl ${m.level.toLowerCase()}">${m.level}</span>` : ""}</div>
+        <h4>${m.title}</h4>
+        <div class="who">${m.author}${m.reviewer ? " → " + m.reviewer : ""}</div>
+      </article>`;
+    }
+    function statusCol(key, label, list) {
+      return `<section class="col ${key}">
+        <div class="col-h"><b>${label}</b><span>${list.length}</span></div>
+        ${list.length ? list.map(mrSlim).join("") : `<div class="empty">None</div>`}
+      </section>`;
+    }
+
+    function pages() {
+      const rel = byRelease(selectedRelease);
+      const nOpen = inBucket(rel, "open").length;
+      const nL1 = inBucket(rel, "l1").length;
+      const nL2 = inBucket(rel, "l2").length;
+      const nL3 = inBucket(rel, "l3").length;
+      const nAppr = inBucket(rel, "approved").length;
+      const nMerg = inBucket(rel, "merged").length;
+      const shown = inBucket(rel, selectedBucket);
+      const bucketLabel = { open: "Open", l1: "L1 review", l2: "L2 review", l3: "L3 review", approved: "Approved", merged: "Merged" }[selectedBucket];
+      const m = find(selectedId) || find(7643);
+      const mine = MRS.filter((x) => x.author === ME);
+      const mineMerged = mine.filter((x) => x.status === "merged");
+      const reviewed = MRS.filter((x) => x.reviewer === ME);
+      const mergedNotes = rel.filter((x) => x.status === "merged");
+      const approvedNotes = rel.filter((x) => x.status === "approved");
+      const people = contributors(rel);
+      const myReleases = [...new Set(mine.map((x) => x.release))].join(", ");
+      const releases = ["release/2026.10", "release/2026.09", "release/2026.07"];
+      const emptyArea = (name) => `
+        <section class="area-block empty">
+          <div class="area-head"><h3>${name}</h3><span>No MRs in ${selectedRelease}</span></div>
+          <p class="quiet">No open, L1, L2, or merged work in this area for the selected release.</p>
+        </section>`;
+
+      return {
+        dashboard: `
+          <div class="page-head">
+            <div>
+              <h2>Release dashboard</h2>
+              <p>Manager view — pick a release, then an area and a review stage. Cards, not GitLab rows.</p>
+            </div>
+          </div>
+          <div class="release-tabs">
+            ${releases.map((r) => `<button class="release-tab ${selectedRelease===r?"on":""}" type="button" data-release="${r}">${r}</button>`).join("")}
+          </div>
+          <section class="area-block">
+            <div class="area-head">
+              <h3>Loan Servicing</h3>
+              <span>${rel.length} MRs in ${selectedRelease}</span>
+            </div>
+            <div class="stages">
+              ${stageTile("open","Open", nOpen, "not in review")}
+              ${stageTile("l1","L1", nL1, "Rohit, Sunil, Kundan, Ankita, Uddeshya, Ritika")}
+              ${stageTile("l2","L2", nL2, "Himanshu Sharma, Zainab")}
+              ${stageTile("l3","L3", nL3, "Mritunjay Sinha")}
+              ${stageTile("approved","Approved", nAppr, "ready to merge")}
+              ${stageTile("merged","Merged", nMerg, "in GitLab")}
+            </div>
+            <div class="area-head" style="margin:16px 0 10px"><h3 style="font-size:14px">${bucketLabel}</h3><span>${shown.length} cards</span></div>
+            <div class="cards">
+              ${shown.length ? shown.map(mrCard).join("") : `<div class="empty">Nothing in ${bucketLabel} for Loan Servicing on ${selectedRelease}.</div>`}
+            </div>
+          </section>
+          ${emptyArea("Obligor Master")}
+          ${emptyArea("Leverage Facility Management")}
+        `,
+        mrs: `
+          <div class="page-head">
+            <div>
+              <h2>Merge Requests</h2>
+              <p>${selectedRelease} · stacked by status</p>
+            </div>
+            <button class="btn btn-primary" id="openLog" type="button">+ Log MR</button>
+          </div>
+          <div class="release-tabs">
+            ${releases.map((r) => `<button class="release-tab ${selectedRelease===r?"on":""}" type="button" data-release="${r}">${r}</button>`).join("")}
+          </div>
+          <div class="board">
+            ${statusCol("open", "Open", inBucket(rel, "open"))}
+            ${statusCol("l1", "L1", inBucket(rel, "l1"))}
+            ${statusCol("l2", "L2", inBucket(rel, "l2"))}
+            ${statusCol("l3", "L3", inBucket(rel, "l3"))}
+            ${statusCol("approved", "Approved", inBucket(rel, "approved"))}
+            ${statusCol("merged", "Merged", inBucket(rel, "merged"))}
+          </div>
+          <div class="modal-back" id="logModal">
+            <div class="modal">
+              <h3>Log Merge Request</h3>
+              <p class="hint">Does not replace GitLab. Merge still happens in GitLab after approval.</p>
+              <div class="form-grid">
+                <div><label class="hint">GitLab MR</label><input value="!7860" /></div>
+                <div><label class="hint">Developer</label><input value="Rohit Patil" /></div>
+                <div class="full"><label class="hint">Title</label><input value="LS-2838 Prepayment Event : Drawdown Splits Handling" /></div>
+                <div>
+                  <label class="hint">Functional area</label>
+                  <select><option>Loan Servicing</option><option>Obligor Master</option><option>Leverage Facility Management</option></select>
+                </div>
+                <div>
+                  <label class="hint">Reviewer level</label>
+                  <select>
+                    <option>L1</option>
+                    <option selected>L2</option>
+                    <option>L3</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="hint">Reviewer</label>
+                  <select>
+                    <optgroup label="L1">${REVIEWERS.L1.map((n) => `<option>${n}</option>`).join("")}</optgroup>
+                    <optgroup label="L2">${REVIEWERS.L2.map((n) => `<option ${n==="Himanshu Sharma"?"selected":""}>${n}</option>`).join("")}</optgroup>
+                    <optgroup label="L3">${REVIEWERS.L3.map((n) => `<option>${n}</option>`).join("")}</optgroup>
+                  </select>
+                </div>
+                <div>
+                  <label class="hint">Target release</label>
+                  <select>
+                    <option>release/2026.10</option>
+                    <option>release/2026.09</option>
+                    <option>release/2026.07</option>
+                  </select>
+                </div>
+                <div class="full"><label class="hint">What changed</label><textarea>Handles drawdown splits on prepayment events (LS-2838).</textarea></div>
+                <div class="full"><label class="hint">Business impact</label><textarea>Prepayment with drawdown splits posts correctly in Loan Servicing.</textarea></div>
+              </div>
+              <div class="row-actions" style="margin-top:14px;justify-content:flex-end">
+                <button class="btn btn-ghost" id="closeLog" type="button">Cancel</button>
+                <button class="btn btn-primary" id="submitLog" type="button">Submit for review</button>
+              </div>
+            </div>
+          </div>
+        `,
+        detail: `
+          <div class="crumbs">Merge Requests / Loan Servicing / <b>!${m.id}</b></div>
+          <div class="page-head">
+            <div>
+              <div class="title-row">
+                <h2>!${m.id} ${m.title}</h2>
+                <span class="area a-ls">${m.area}</span>
+                ${m.level ? `<span class="lvl ${m.level.toLowerCase()}">${m.level}</span>` : ""}
+                ${st(m)}
+              </div>
+              <p>GitLab !${m.id} · ${m.release}${m.approvals ? " · Approvals " + m.approvals : ""}</p>
+            </div>
+            <div class="row-actions">
+              <button class="btn btn-danger" type="button">Request changes</button>
+              <button class="btn btn-primary" id="approveBtn" type="button">Approve</button>
+            </div>
+          </div>
+          <div class="meta">
+            <div><small>Author</small><b>${m.author}</b></div>
+            <div><small>Reviewer</small><b>${m.reviewer || "Not assigned"}</b></div>
+            <div><small>Created</small><b>${m.created}</b></div>
+            <div><small>Last update</small><b>${m.updated}</b></div>
+          </div>
+          <div class="grid-2">
+            <div>
+              <div class="field"><label>WHAT CHANGED</label><div class="box">${m.change}</div></div>
+              <div class="field"><label>BUSINESS IMPACT</label><div class="box">${m.impact}</div></div>
+              <p class="hint">Approve here records coordination status. Merge is authorized in GitLab. Release branch: ${m.release}</p>
+            </div>
+            <div class="card">
+              <h3>Review timeline</h3>
+              <div class="timeline">
+                <div class="step"><div class="dot"></div><div><p>Logged in MergeFlow</p><span>${m.created} · ${m.author}</span></div></div>
+                <div class="step"><div class="dot ${m.reviewer ? "" : "off"}"></div><div><p>${m.reviewer ? `Assigned ${m.level || ""} · ${m.reviewer}` : "Reviewer not assigned"}</p><span>${m.reviewer ? "From Loan Servicing reviewer map" : "Waiting for area assignment"}</span></div></div>
+                <div class="step"><div class="dot ${m.status === "open" ? "off" : ""}"></div><div><p>In review</p><span>${m.approvals ? "Approvals " + m.approvals : m.updated}</span></div></div>
+                <div class="step"><div class="dot ${m.status === "approved" || m.status === "merged" ? "" : "off"}"></div><div><p>Approval</p><span>${m.status === "approved" || m.status === "merged" ? "Approved" : "Pending"}</span></div></div>
+                <div class="step"><div class="dot ${m.status === "merged" ? "" : "off"}"></div><div><p>Authorized merge in GitLab</p><span>${m.status === "merged" ? "Resolved / merged" : "Locked until approved"}</span></div></div>
+                <div class="step"><div class="dot ${m.status === "merged" ? "" : "off"}"></div><div><p>Included in ${m.release} notes</p><span>${m.status === "merged" ? "Included" : "After merge"}</span></div></div>
+              </div>
+            </div>
+          </div>
+        `,
+        releases: `
+          <div class="page-head">
+            <div>
+              <h2>${selectedRelease}</h2>
+              <p>What is shipping from Loan Servicing in this release</p>
+            </div>
+            <button class="btn btn-primary" id="copyNotes" type="button">Copy notes</button>
+          </div>
+          <div class="release-tabs">
+            ${releases.map((r) => `<button class="release-tab ${selectedRelease===r?"on":""}" type="button" data-release="${r}">${r}</button>`).join("")}
+          </div>
+          <div class="stages">
+            ${stageTile("open","Open", nOpen, "not in review")}
+            ${stageTile("l1","L1", nL1, "Rohit, Sunil, Kundan, Ankita, Uddeshya, Ritika")}
+            ${stageTile("l2","L2", nL2, "Himanshu Sharma, Zainab")}
+            ${stageTile("l3","L3", nL3, "Mritunjay Sinha")}
+            ${stageTile("approved","Approved", nAppr, "ready")}
+            ${stageTile("merged","Merged", nMerg, "shipped")}
+          </div>
+          <section class="area-block">
+            <div class="area-head"><h3>Release notes</h3><span>Approved + merged</span></div>
+            <div class="cards" id="notesCard">
+              ${[...mergedNotes, ...approvedNotes].length ? [...mergedNotes, ...approvedNotes].map((x) => `
+                <article class="mr-card" data-go="detail" data-mr="${x.id}">
+                  <div class="mr-card-top"><span class="mono">!${x.id}</span>${st(x)}</div>
+                  <h4>${x.title}</h4>
+                  <div class="mr-card-meta"><span>${x.author}</span><span>${x.impact}</span></div>
+                </article>`).join("") : `<div class="empty">No approved or merged MRs in ${selectedRelease} yet.</div>`}
+            </div>
+          </section>
+          <section class="area-block">
+            <div class="area-head"><h3>Contributing developers</h3><span>Loan Servicing</span></div>
+            <div class="cards">
+              ${people.map(([name, n]) => `<article class="mr-card"><h4>${name}</h4><div class="n" style="font-size:28px;font-weight:700">${n}</div><div class="quiet">MRs in ${selectedRelease}</div></article>`).join("")}
+            </div>
+          </section>
+        `,
+        contribution: `
+          <div class="page-head">
+            <div>
+              <h2>My contribution</h2>
+              <p>Year-end snapshot for ${ME} — not a score</p>
+            </div>
+            <button class="btn btn-primary" id="copyYear" type="button">Copy summary</button>
+          </div>
+          <div class="contrib-kpis">
+            <div class="kpi"><div class="label">MRs I authored</div><div class="num">${mine.length}</div><p class="hint">${mineMerged.length} merged · ${myReleases}</p></div>
+            <div class="kpi"><div class="label">MRs I reviewed</div><div class="num">${reviewed.length}</div><p class="hint">${reviewed.length ? "" : "None in this Loan Servicing sample"}</p></div>
+          </div>
+          <section class="area-block">
+            <div class="area-head"><h3>MRs I authored</h3><span>${mine.length}</span></div>
+            <div class="cards">${mine.map(mrCard).join("")}</div>
+          </section>
+          <section class="area-block">
+            <div class="area-head"><h3>MRs I reviewed</h3><span>${reviewed.length}</span></div>
+            ${reviewed.length ? `<div class="cards">${reviewed.map(mrCard).join("")}</div>` : `<div class="empty">No L1 reviews recorded for ${ME} in this sample. L1 reviewers: ${REVIEWERS.L1.join(", ")}.</div>`}
+            <div class="share" id="yearCard" style="margin-top:12px">
+              <h4>Year-end share-out — 2026</h4>
+              ${ME}<br/><br/>
+              MRs I authored: ${mine.length}<br/>
+              Merged: ${mineMerged.map((x) => "!" + x.id).join(", ") || "none in this sample"}<br/>
+              Areas: Loan Servicing<br/>
+              Releases: ${myReleases}<br/><br/>
+              MRs I reviewed: ${reviewed.length}
+            </div>
+          </section>
+        `,
+        reviewers: `
+          <div class="page-head">
+            <div>
+              <h2>Reviewer map</h2>
+              <p>Loan Servicing · used to assign L1 / L2 / L3</p>
+            </div>
+            <button class="btn btn-ghost" type="button">Edit</button>
+          </div>
+          <div class="rmap">
+            <div class="rmap-col l1">
+              <h3>L1 · First review <b>${REVIEWERS.L1.length}</b></h3>
+              ${REVIEWERS.L1.map((n) => personRow(n, "L1")).join("")}
+            </div>
+            <div class="rmap-col l2">
+              <h3>L2 · Second review <b>${REVIEWERS.L2.length}</b></h3>
+              ${REVIEWERS.L2.map((n) => personRow(n, "L2")).join("")}
+            </div>
+            <div class="rmap-col l3">
+              <h3>L3 · Final review <b>${REVIEWERS.L3.length}</b></h3>
+              ${REVIEWERS.L3.map((n) => personRow(n, "L3")).join("")}
+            </div>
+          </div>
+          <p class="hint">GitLab remains the source of merge. This map only decides who reviews.</p>
+        `
+      };
+    }
+
+    const nav = [
+      ["dashboard", "Dashboard", icon.dash],
+      ["mrs", "Merge Requests", icon.mr],
+      ["releases", "Releases", icon.rel],
+      ["contribution", "My contribution", icon.me],
+      ["reviewers", "Reviewer map", icon.map],
+    ];
+
+    function shell(page, html) {
+      return `
+        <aside class="sidebar">
+          <div class="brand"><div class="logo">M</div><div><h1>MergeFlow</h1><p>Argon Project</p></div></div>
+          ${nav.map(([id, label, ic]) => `<div class="nav-item ${id===page?"active":""}" data-go="${id}">${ic}${label}</div>`).join("")}
+          <div class="nav-item" style="opacity:.55">${icon.set}Settings</div>
+          <div class="sidebar-foot">GitLab remains the source of merge. Releases: release/2026.09, release/2026.10.</div>
+        </aside>
+        <section class="main">
+          <div class="topbar">
+            <div class="search">Search MRs, people, release/2026.10</div>
+            <div class="top-right">
+              <span class="pill">GitLab connected</span>
+              <div class="avatar">RP</div>
+              <span style="font-size:13px;font-weight:600">${ME}</span>
+            </div>
+          </div>
+          <div class="content">${html}</div>
+        </section>`;
+    }
+
+    function paint() {
+      const p = pages();
+      document.querySelectorAll(".artboard").forEach((board) => {
+        board.querySelector("[data-app]").innerHTML = shell(board.dataset.frame, p[board.dataset.frame]);
+      });
+      bind();
+    }
+
+    function show(page) {
+      document.querySelectorAll(".artboard").forEach((b) => b.classList.toggle("active", b.dataset.frame === page));
+      paint();
+    }
+
+    function toast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.style.display = "block";
+      setTimeout(() => { t.style.display = "none"; }, 1800);
+    }
+
+    function bind() {
+      document.querySelectorAll("[data-go]").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (el.dataset.mr) selectedId = Number(el.dataset.mr);
+          document.body.classList.add("prototype-mode");
+          setModeButtons(true);
+          show(el.getAttribute("data-go"));
+        });
+      });
+      document.querySelectorAll("[data-release]").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedRelease = el.getAttribute("data-release");
+          paint();
+        });
+      });
+      document.querySelectorAll("[data-bucket]").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectedBucket = el.getAttribute("data-bucket");
+          paint();
+        });
+      });
+      const openLog = document.getElementById("openLog");
+      const logModal = document.getElementById("logModal");
+      if (openLog && logModal) {
+        openLog.addEventListener("click", (e) => { e.stopPropagation(); logModal.classList.add("on"); });
+        document.getElementById("closeLog").addEventListener("click", () => logModal.classList.remove("on"));
+        document.getElementById("submitLog").addEventListener("click", () => {
+          logModal.classList.remove("on");
+          toast("MR submitted for L2 review · Himanshu Sharma · release/2026.10");
+        });
+      }
+      const approve = document.getElementById("approveBtn");
+      if (approve) approve.addEventListener("click", () => toast("Approved in MergeFlow. Merge still happens in GitLab."));
+      const copy = document.getElementById("copyYear");
+      if (copy) copy.addEventListener("click", () => {
+        navigator.clipboard.writeText(document.getElementById("yearCard").innerText).then(() => toast("Copied year-end summary"));
+      });
+      const copyNotes = document.getElementById("copyNotes");
+      if (copyNotes) copyNotes.addEventListener("click", () => {
+        navigator.clipboard.writeText(document.getElementById("notesCard").innerText).then(() => toast("Copied release/2026.10 notes"));
+      });
+    }
+
+    function setModeButtons(proto) {
+      document.getElementById("btnProto").classList.toggle("on", proto);
+      document.getElementById("btnCanvas").classList.toggle("on", !proto);
+      document.getElementById("zoomLabel").textContent = proto ? "100%" : "72%";
+    }
+
+    document.getElementById("btnCanvas").addEventListener("click", () => {
+      document.body.classList.remove("prototype-mode");
+      setModeButtons(false);
+    });
+    document.getElementById("btnProto").addEventListener("click", () => {
+      document.body.classList.add("prototype-mode");
+      setModeButtons(true);
+    });
+    document.getElementById("btnPresent").addEventListener("click", () => {
+      document.body.classList.add("prototype-mode");
+      setModeButtons(true);
+      show("dashboard");
+    });
+    document.querySelectorAll(".artboard").forEach((b) => {
+      b.addEventListener("click", () => {
+        document.body.classList.add("prototype-mode");
+        setModeButtons(true);
+        show(b.dataset.frame);
+      });
+    });
+
+    paint();
+  </script>
+</body>
+</html>
